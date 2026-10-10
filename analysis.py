@@ -30,10 +30,55 @@ def load_readings(filename):
 def main():
     patient_ids, monitors, hour_columns, readings = load_readings("data/bp_readings.csv")
     print(f"Loaded {readings.shape[0]} patients x {readings.shape[1]} hours")
+    
+    patient_means = readings.mean(axis=1)
+    hour_means = readings.mean(axis=0)
 
-    # TODO: answer each question in the README's summary table with NumPy.
+    highest_patient_index = patient_means.argmax()
+    peak_hour_index = hour_means.argmax()
 
-    # TODO: write one "key: value" line per answer to output/vitals_summary.txt.
+    monitor_names = sorted(set(monitors))
+    monitor_averages = []
+
+    for monitor in monitor_names:
+        mask = monitors == monitor
+        monitor_averages.append(patient_means[mask].mean())
+
+    monitor_averages = np.array(monitor_averages)
+
+    high_monitor_index = monitor_averages.argmax()
+    high_monitor = monitor_names[high_monitor_index]
+
+    high_monitor_mask = monitors == high_monitor
+
+    other_patient_means = patient_means[~high_monitor_mask]
+
+    monitor_offset = (
+        monitor_averages[high_monitor_index]
+        - other_patient_means.mean()
+    )
+
+    answers = {
+        "patients": readings.shape[0],
+        "readings": readings.size,
+        "mean_sbp": readings.mean(),
+        "sd_sbp": readings.std(),
+        "min_sbp": readings.min(),
+        "max_sbp": readings.max(),
+        "stage2_patients": np.sum(patient_means >= 140),
+        "highest_patient": patient_ids[highest_patient_index],
+        "highest_patient_mean": patient_means[highest_patient_index],
+        "peak_hour_column": hour_columns[peak_hour_index],
+        "peak_hour_mean": hour_means[peak_hour_index],
+        "high_monitor": high_monitor,
+        "monitor_offset": monitor_offset,
+        "stage2_other_monitors": np.sum(other_patient_means >= 140),
+    }
+
+    with open("output/vitals_summary.txt", "w", encoding="utf-8") as file:
+        for key, value in answers.items():
+            file.write(f"{key}: {value}\n")
+
 
 
 if __name__ == "__main__":
